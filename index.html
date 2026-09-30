@@ -160,25 +160,23 @@
 
         window.addEventListener('DOMContentLoaded', fetchProducts);
 
-        // Processador de CSV ultra-seguro (ignora vírgulas dentro de aspas)
-        function splitCSVLine(line) {
-            const result = [];
-            let current = '';
+        // Processa a linha do CSV caractere por caractere para não quebrar com vírgulas de preços (ex: "19,90")
+        function parseCSVLine(text) {
+            let currentToken = '', columns = [];
             let inQuotes = false;
-
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                if (char === '"') {
-                    inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                    result.push(current.trim());
-                    current = '';
-                } else {
-                    current += char;
+            for (let i = 0; i < text.length; i++) {
+                let char = text[i];
+                if (char === '"') { 
+                    inQuotes = !inQuotes; 
+                } else if (char === ',' && !inQuotes) { 
+                    columns.push(currentToken.trim()); 
+                    currentToken = ''; 
+                } else { 
+                    currentToken += char; 
                 }
             }
-            result.push(current.trim());
-            return result;
+            columns.push(currentToken.trim());
+            return columns;
         }
 
         async function fetchProducts() {
@@ -188,25 +186,29 @@
                 if (!response.ok) throw new Error("Erro ao carregar a planilha");
                 const csvText = await response.text();
                 
-                // Divide separando quebras de linha limpas
                 const lines = csvText.split(/\r?\n/);
                 
                 allProducts = lines.slice(1).map(line => {
                     if (!line || line.trim() === '') return null;
 
-                    const columns = splitCSVLine(line);
+                    const columns = parseCSVLine(line);
                     if (columns.length < 3) return null;
 
-                    // Mapeamento baseado estritamente na ordem das posições:
-                    const nome  = columns[0] ? columns[0].replace(/^"|"\$/g, '').trim() : '';
-                    const link  = columns[1] ? columns[1].replace(/^"|"\$/g, '').trim() : '#';
-                    let preco   = columns[2] ? columns[2].replace(/^"|"\$/g, '').trim() : '';
-                    const img   = columns[3] ? columns[3].replace(/^"|"\$/g, '').trim() : '';
+                    // Limpa as aspas das bordas do texto exportado pelo Google
+                    const limpar = (txt) => txt ? txt.replace(/^"|"\$/g, '').trim() : '';
 
+                    // Mapeamento explícito das colunas por índice numérico do array
+                    const nome  = limpar(columns[0]);
+                    const link  = limpar(columns[1]);
+                    let preco   = limpar(columns[2]);
+                    const img   = columns[3] ? limpar(columns[3]) : '';
+
+                    // Garante a formatação visual do R\$
                     if (preco && !preco.toLowerCase().includes('r\$')) {
                         preco = 'R\$ ' + preco;
                     }
 
+                    // Define imagem fallback caso a célula correspondente esteja vazia
                     const imagemFinal = (img !== '') ? img : 'https://unsplash.com';
 
                     return { nome, img: imagemFinal, link, preco };
@@ -216,7 +218,7 @@
                 renderProducts(allProducts);
             } catch (error) {
                 console.error(error);
-                grid.innerHTML = `<div class="status-message" style="color: #ee4d2d;"><i class="fa-solid fa-triangle-exclamation"></i> Ocorreu um erro ao carregar os produtos. Verifique se a planilha está publicada corretamente.</div>`;
+                grid.innerHTML = `<div class="status-message" style="color: #ee4d2d;"><i class="fa-solid fa-triangle-exclamation"></i> Ocorreu um erro ao carregar os produtos. Verifique se a planilha está pública.</div>`;
             }
         }
 
