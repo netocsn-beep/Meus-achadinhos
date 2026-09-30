@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meus Achadinhos Shopee</title>
-    <!-- Bibliotecas de ícones -->
     <link rel="stylesheet" href="https://cloudflare.com">
     <style>
         :root {
@@ -177,11 +176,6 @@
             font-size: 0.85rem;
             font-weight: 600;
             text-align: center;
-            transition: background 0.2s;
-        }
-
-        .btn-shopee:hover {
-            background-color: var(--shopee-dark);
         }
 
         .status-message {
@@ -213,53 +207,55 @@
     </div>
 
     <script>
-        // Carregamento otimizado via ID direto da planilha informada
         const PLANILHA_ID = "10v0iA1qh3q5MHI7HKObh0uFqjZNf0hdizMspbK3i2ZM"; 
-        const URL_PLANILHA = `https://google.com{PLANILHA_ID}/gviz/tq?tqx=out:json`;
+        
+        // Mudança crucial: Usando responseHandler para processar os dados de forma limpa e nativa
+        const URL_PLANILHA = `https://google.com{PLANILHA_ID}/gviz/tq?tqx=responseHandler:gvizJson`;
 
         let allProducts = [];
 
-        async function fetchProducts() {
-            const grid = document.getElementById('productGrid');
-            try {
-                const response = await fetch(URL_PLANILHA);
-                const text = await response.text();
-                
-                // Tratamento estrito do JSON retornado pelo Google Sheets API
-                const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*?)\);/);
-                if (!match || !match[1]) {
-                    throw new Error("Formato inválido.");
-                }
-                
-                const jsonData = JSON.parse(match[1]);
-                const rows = jsonData.table.rows;
-                
-                allProducts = rows.map(row => {
-                    if (!row || !row.c) return null;
-                    
-                    // Coluna A (0) = Nome | Coluna B (1) = Link | Coluna C (2) = Preço | Coluna D (3) = Imagem
-                    const nome = (row.c[0] && row.c[0].v !== null) ? row.c[0].v.toString() : '';
-                    const link = (row.c[1] && row.c[1].v !== null) ? row.c[1].v.toString() : '#';
-                    
-                    let preco = (row.c[2] && row.c[2].v !== null) ? row.c[2].v.toString().trim() : '';
-                    if (preco && !preco.includes('R$')) {
-                        preco = 'R$ ' + preco;
-                    }
+        function fetchProducts() {
+            // Remove scripts antigos para evitar duplicidade no carregamento
+            const oldScript = document.getElementById('gviz-script');
+            if (oldScript) oldScript.remove();
 
-                    // Se a imagem da coluna D estiver vazia, injeta um marcador padrão elegante
-                    const img = (row.c[3] && row.c[3].v !== null && row.c[3].v.toString().trim() !== '') 
-                                ? row.c[3].v.toString() 
-                                : 'https://unsplash.com'; 
+            const script = document.createElement('script');
+            script.id = 'gviz-script';
+            script.src = URL_PLANILHA;
+            script.onerror = () => {
+                document.getElementById('productGrid').innerHTML = `<div class="status-message" style="color: #d03112;"><i class="fa-solid fa-triangle-exclamation"></i> Erro de conexão. Verifique se a planilha está pública.</div>`;
+            };
+            document.body.appendChild(script);
+        }
 
-                    return { nome, img, link, preco };
-                }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== 'nome');
-
-                allProducts.reverse(); 
-                renderProducts(allProducts);
-            } catch (error) {
-                console.error("Erro interno:", error);
-                grid.innerHTML = `<div class="status-message" style="color: #d03112;"><i class="fa-solid fa-triangle-exclamation"></i> Certifique-se de acessar a sua planilha, ir em 'Compartilhar' e mudar o acesso para 'Qualquer pessoa com o link' em modo Leitor.</div>`;
+        // Esta função roda automaticamente quando o Google Sheets responde
+        function gvizJson(data) {
+            if (!data || !data.table || !data.table.rows) {
+                document.getElementById('productGrid').innerHTML = `<div class="status-message">Nenhum dado encontrado.</div>`;
+                return;
             }
+
+            const rows = data.table.rows;
+
+            allProducts = rows.map(row => {
+                if (!row || !row.c) return null;
+
+                // Mapeamento seguro usando os índices corretos das colunas (A=0, B=1, C=2, D=3)
+                const nome = row.c[0] && row.c[0].v ? row.c[0].v.toString() : '';
+                const link = row.c[1] && row.c[1].v ? row.c[1].v.toString() : '#';
+                
+                let preco = row.c[2] && row.c[2].v ? row.c[2].v.toString().trim() : '';
+                if (preco && !preco.includes('R\$')) {
+                    preco = 'R\$ ' + preco;
+                }
+
+                const img = row.c[3] && row.c[3].v ? row.c[3].v.toString() : 'https://unsplash.com';
+
+                return { nome, img, link, preco };
+            }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== 'nome');
+
+            allProducts.reverse();
+            renderProducts(allProducts);
         }
 
         function renderProducts(productsList) {
@@ -289,3 +285,14 @@
         }
 
         function filterProducts() {
+            const searchTerm = document.getElementById('searchBar').value.toLowerCase();
+            const filtered = allProducts.filter(product => 
+                product.nome.toLowerCase().includes(searchTerm)
+            );
+            renderProducts(filtered);
+        }
+
+        window.onload = fetchProducts;
+    </script>
+</body>
+</html>
