@@ -154,30 +154,13 @@
     </div>
 
     <script>
+        const PLANILHA_ID = "10v0iA1qh3q5MHI7HKObh0uFqjZNf0hdizMspbK3i2ZM"; 
         const URL_PLANILHA = `https://google.com`;
 
         let allProducts = [];
 
+        // Inicializa a busca ao carregar a página
         window.addEventListener('DOMContentLoaded', fetchProducts);
-
-        // Processa a linha do CSV caractere por caractere para não quebrar com vírgulas de preços (ex: "19,90")
-        function parseCSVLine(text) {
-            let currentToken = '', columns = [];
-            let inQuotes = false;
-            for (let i = 0; i < text.length; i++) {
-                let char = text[i];
-                if (char === '"') { 
-                    inQuotes = !inQuotes; 
-                } else if (char === ',' && !inQuotes) { 
-                    columns.push(currentToken.trim()); 
-                    currentToken = ''; 
-                } else { 
-                    currentToken += char; 
-                }
-            }
-            columns.push(currentToken.trim());
-            return columns;
-        }
 
         async function fetchProducts() {
             const grid = document.getElementById('productGrid');
@@ -186,39 +169,35 @@
                 if (!response.ok) throw new Error("Erro ao carregar a planilha");
                 const csvText = await response.text();
                 
-                const lines = csvText.split(/\r?\n/);
+                const lines = csvText.split('\n');
                 
                 allProducts = lines.slice(1).map(line => {
                     if (!line || line.trim() === '') return null;
 
-                    const columns = parseCSVLine(line);
+                    // Divide as colunas considerando possíveis aspas no CSV
+                    const columns = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*\$)/);
                     if (columns.length < 3) return null;
 
-                    // Limpa as aspas das bordas do texto exportado pelo Google
-                    const limpar = (txt) => txt ? txt.replace(/^"|"\$/g, '').trim() : '';
-
-                    // Mapeamento explícito das colunas por índice numérico do array
-                    const nome  = limpar(columns[0]);
-                    const link  = limpar(columns[1]);
-                    let preco   = limpar(columns[2]);
-                    const img   = columns[3] ? limpar(columns[3]) : '';
-
-                    // Garante a formatação visual do R\$
-                    if (preco && !preco.toLowerCase().includes('r\$')) {
+                    const nome = columns[0] ? columns[0].replace(/"/g, '').trim() : '';
+                    const link = columns[1] ? columns[1].replace(/"/g, '').trim() : '#';
+                    
+                    let preco = columns[2] ? columns[2].replace(/"/g, '').trim() : '';
+                    if (preco && !preco.includes('R\$')) {
                         preco = 'R\$ ' + preco;
                     }
 
-                    // Define imagem fallback caso a célula correspondente esteja vazia
-                    const imagemFinal = (img !== '') ? img : 'https://unsplash.com';
+                    const img = (columns[3] && columns[3].replace(/"/g, '').trim() !== '') 
+                                ? columns[3].replace(/"/g, '').trim() 
+                                : 'https://unsplash.com';
 
-                    return { nome, img: imagemFinal, link, preco };
+                    return { nome, img, link, preco };
                 }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== 'nome');
 
                 allProducts.reverse(); 
                 renderProducts(allProducts);
             } catch (error) {
                 console.error(error);
-                grid.innerHTML = `<div class="status-message" style="color: #ee4d2d;"><i class="fa-solid fa-triangle-exclamation"></i> Ocorreu um erro ao carregar os produtos. Verifique se a planilha está pública.</div>`;
+                grid.innerHTML = `<div class="status-message" style="color: #ee4d2d;"><i class="fa-solid fa-triangle-exclamation"></i> Certifique-se de que a planilha foi 'Publicada na Web' como CSV.</div>`;
             }
         }
 
@@ -232,7 +211,7 @@
             grid.innerHTML = products.map(p => `
                 <div class="product-card">
                     <div class="product-image-wrapper">
-                        <img src="${p.img}" alt="${p.nome}" class="product-img" onerror="this.src='https://unsplash.com'">
+                        <img src="${p.img}" alt="${p.nome}" class="product-img">
                     </div>
                     <div class="product-info">
                         <h2 class="product-title" title="${p.nome}">${p.nome}</h2>
