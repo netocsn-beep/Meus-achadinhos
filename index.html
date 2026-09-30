@@ -208,10 +208,8 @@
     </div>
 
     <script>
-        // ID da sua planilha integrada diretamente
+        // ID Oficial da sua planilha
         const PLANILHA_ID = "10v0iA1qh3q5MHI7HKObh0uFqjZNf0hdizMspbK3i2ZM"; 
-        
-        // Mudança essencial: Exportação direta em CSV para pular os bloqueios do navegador
         const URL_PLANILHA = `https://google.com{PLANILHA_ID}/export?format=csv`;
 
         let allProducts = [];
@@ -222,26 +220,29 @@
                 const response = await fetch(URL_PLANILHA);
                 const csvText = await response.text();
                 
-                // Conversão simples e robusta do formato CSV para objetos Javascript
+                // Quebra o texto por linhas
                 const lines = csvText.split('\n');
                 
+                // Mapeia pulando o cabeçalho (linha 0)
                 allProducts = lines.slice(1).map(line => {
-                    // Divide os dados respeitando as vírgulas da tabela
-                    const columns = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*\$)/);
+                    if (!line.trim()) return null;
+
+                    // Divide as colunas por vírgula
+                    const columns = line.split(',');
                     if (columns.length < 3) return null;
 
-                    // Limpa as aspas geradas no formato CSV
-                    const nome = columns[0] ? columns[0].replace(/^"|"\$/g, '').trim() : '';
-                    const link = columns[1] ? columns[1].replace(/^"|"\$/g, '').trim() : '#';
+                    // CORREÇÃO CRÍTICA: Lendo os índices corretos e removendo aspas simples/duplas de texto limpo
+                    const nome = columns[0] ? columns[0].replace(/"/g, '').trim() : '';
+                    const link = columns[1] ? columns[1].replace(/"/g, '').trim() : '#';
                     
-                    let preco = columns[2] ? columns[2].replace(/^"|"\$/g, '').trim() : '';
+                    let preco = columns[2] ? columns[2].replace(/"/g, '').trim() : '';
                     if (preco && !preco.includes('R\$')) {
                         preco = 'R\$ ' + preco;
                     }
 
-                    // Coluna D (Índice 3) para Imagem. Se vazia, usa o placeholder elegante
-                    const img = (columns[3] && columns[3].replace(/^"|"\$/g, '').trim() !== '') 
-                                ? columns[3].replace(/^"|"\$/g, '').trim() 
+                    // Coluna D (Índice 3) para Imagem. Se vazia, usa a padrão de caixa.
+                    const img = (columns[3] && columns[3].replace(/"/g, '').trim() !== '') 
+                                ? columns[3].replace(/"/g, '').trim() 
                                 : 'https://unsplash.com';
 
                     return { nome, img, link, preco };
@@ -251,7 +252,7 @@
                 renderProducts(allProducts);
             } catch (error) {
                 console.error("Erro interno capturado:", error);
-                grid.innerHTML = `<div class="status-message" style="color: #d03112;"><i class="fa-solid fa-triangle-exclamation"></i> Certifique-se de acessar a sua planilha, ir no botão azul 'Compartilhar' e alterar o acesso para 'Qualquer pessoa com o link'.</div>`;
+                grid.innerHTML = `<div class="status-message" style="color: #d03112;"><i class="fa-solid fa-triangle-exclamation"></i> Verifique se a planilha está marcada como pública para 'Qualquer pessoa com o link'.</div>`;
             }
         }
 
