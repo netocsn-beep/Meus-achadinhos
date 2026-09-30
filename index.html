@@ -148,7 +148,6 @@
             margin-bottom: 8px;
         }
 
-        /* Container do Preço Chamativo */
         .price-container {
             margin-bottom: 12px;
             display: flex;
@@ -203,26 +202,24 @@
 <body>
 
     <div class="container">
-        <!-- Cabeçalho Principal -->
         <header class="profile-header">
             <img src="https://unsplash.com" alt="Avatar" class="profile-avatar">
             <h1 class="profile-name">@achadinhos.shopee</h1>
             <p class="profile-bio">Os melhores produtos e utilidades da Shopee com descontos imperdíveis! Atualizado diretamente pela planilha. 🔥👇</p>
         </header>
 
-        <!-- Filtro de Busca -->
         <div class="search-container">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
             <input type="text" class="search-input" id="searchBar" placeholder="Buscar por um achadinho..." oninput="filterProducts()">
         </div>
 
-        <!-- Vitrine de Produtos -->
         <main class="products-grid" id="productGrid">
             <div class="status-message"><i class="fa-solid fa-spinner fa-spin"></i> Carregando achadinhos...</div>
         </main>
     </div>
 
     <script>
+        // Link apontando diretamente para o ID fornecido da planilha pública
         const URL_PLANILHA = "https://google.com";
 
         let allProducts = [];
@@ -232,34 +229,40 @@
                 const response = await fetch(URL_PLANILHA);
                 const text = await response.text();
                 
-                const jsonData = JSON.parse(text.substring(47, text.length - 2));
+                // Correção Inteligente: Captura o JSON de dentro de qualquer variação de texto retornada pelo Google
+                const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*?)\);/);
+                if (!match) {
+                    throw new Error("Formato de resposta inválido do Google Planilhas.");
+                }
+                
+                const jsonData = JSON.parse(match[1]);
                 const rows = jsonData.table.rows;
                 
                 allProducts = rows.map(row => {
-                    const nome = (row.c && row.c[0] && row.c[0].v) ? row.c[0].v.toString() : '';
-                    const img = (row.c && row.c[1] && row.c[1].v) ? row.c[1].v.toString() : 'https://unsplash.com';
-                    const link = (row.c && row.c[2] && row.c[2].v) ? row.c[2].v.toString() : '#';
+                    if (!row || !row.c) return null;
                     
-                    // Lê a quarta coluna (D) da planilha se houver preço informado
-                    let preco = (row.c && row.c[3] && row.c[3].v) ? row.c[3].v.toString().trim() : '';
+                    // Extração segura de dados por índice de coluna (A=0, B=1, C=2, D=3)
+                    const nome = (row.c[0] && row.c[0].v !== null) ? row.c[0].v.toString() : '';
+                    const img = (row.c[1] && row.c[1].v !== null) ? row.c[1].v.toString() : 'https://unsplash.com';
+                    const link = (row.c[2] && row.c[2].v !== null) ? row.c[2].v.toString() : '#';
                     
-                    // Se o usuário digitou apenas o número (ex: 29.9), formata bonitinho
+                    let preco = (row.c[3] && row.c[3].v !== null) ? row.c[3].v.toString().trim() : '';
                     if (preco && !preco.includes('R$')) {
                         preco = 'R$ ' + preco;
                     }
 
                     return { nome, img, link, preco };
-                }).filter(p => p.nome !== '' && p.nome.toLowerCase() !== 'nome');
+                }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== 'nome');
 
                 allProducts.reverse(); 
                 renderProducts(allProducts);
             } catch (error) {
-                console.error("Erro na leitura:", error);
+                console.error("Erro detalhado na leitura:", error);
                 document.getElementById('productGrid').innerHTML = `
                     <div class="status-message" style="color:#dc3545;">
                         <i class="fa-solid fa-circle-exclamation"></i> Erro ao sincronizar dados da planilha.<br><br>
                         <span style="font-size:0.85rem; color:#444; background:#fff; padding:8px; border-radius:6px; border:1px solid #ddd; display:inline-block; margin-top:5px;">
-                            Certifique-se de que clicou em <b>Compartilhar</b> na planilha e mudou para <b>Qualquer pessoa com o link</b>.
+                            Por favor, certifique-se de que a planilha está em modo público ("Qualquer pessoa com o link" como "Leitor") nas configurações de Compartilhamento.
                         </span>
                     </div>`;
             }
@@ -270,12 +273,11 @@
             grid.innerHTML = '';
 
             if(productsList.length === 0) {
-                grid.innerHTML = `<p class="status-message">Sua planilha foi conectada! Adicione produtos a partir da linha 2 dela para aparecerem aqui. 📝</p>`;
+                grid.innerHTML = `<p class="status-message">Conexão estabelecida com sucesso! Adicione produtos nas linhas de sua planilha para visualizá-los aqui. 📝</p>`;
                 return;
             }
 
             productsList.forEach(prod => {
-                // Se não houver preço cadastrado na planilha, oculta a área do preço
                 const priceHTML = prod.preco ? `
                     <div class="price-container">
                         <span class="price-badge">Menor Preço</span>
@@ -287,7 +289,3 @@
                     <div class="product-card">
                         <div class="product-image-wrapper">
                             <img src="${prod.img}" alt="${prod.nome}" class="product-img" loading="lazy">
-                        </div>
-                        <div class="product-info">
-                            <h3 class="product-title">${prod.nome}</h3>
-                            ${priceHTML}
