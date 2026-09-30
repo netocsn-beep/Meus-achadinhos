@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meus Achadinhos Shopee</title>
+    <!-- Link oficial atualizado dos ícones -->
     <link rel="stylesheet" href="https://cloudflare.com">
     <style>
         :root {
@@ -121,7 +122,7 @@
         .product-image-wrapper {
             position: relative;
             width: 100%;
-            padding-top: 100%; /* Mantém proporção 1:1 quadrada fixa */
+            padding-top: 100%;
             background-color: #f9f9f9;
         }
 
@@ -305,7 +306,7 @@
             </div>
         </div>
 
-        <!-- Cabeçalho Principal -->
+        <!-- Cabeçalho Principal (ALTERE AQUI SEU NOME E FOTO) -->
         <header class="profile-header">
             <img src="https://unsplash.com" alt="Avatar" class="profile-avatar">
             <h1 class="profile-name">@achadinhos.shopee</h1>
@@ -323,76 +324,9 @@
     </div>
 
     <script>
-        // ==========================================
-        // 📦 SEUS PRODUTOS OFICIAIS (COLE AQUI SEU CÓDIGO EXPORTADO)
-        // ==========================================
+        // ===================================================================
+        // 📦 SEUS PRODUTOS OFICIAIS (AQUI É ONDE VOCÊ VAI COLAR O TEXTO EXPORTADO)
+        // ===================================================================
         const DATA_PRODUCTS = [
             {
                 nome: "Mini Processador de Alimentos Elétrico Sem Fio Recarregável",
-                img: "https://unsplash.com",
-                link: "https://shope.eeexemplo1"
-
-},
-{
-nome: "Garrafa Térmica Inteligente com Sensor de Temperatura LED",
-img: "unsplash.com",
-link: "shope.ee"
-}
-];
-// Inicializador do App
-let activeProducts = [...DATA_PRODUCTS];
-const checkAdmin = window.location.hash === '#adm';
-if (checkAdmin) {
-document.getElementById('admin-panel').style.display = 'block';
-}
-// Renderizador Dinâmico com suporte a Busca
-function renderProducts() {
-const grid = document.getElementById('productGrid');
-const searchKeyword = document.getElementById('searchBar').value.toLowerCase();
-grid.innerHTML = '';
-const filtered = activeProducts.filter(p => p.nome.toLowerCase().includes(searchKeyword));
-if(filtered.length === 0) {
-grid.innerHTML = <p style="grid-column: span 2; text-align:center; color:#757575; padding: 20px;">Nenhum produto encontrado 😢</p>;
-return;
-}
-filtered.forEach((prod, index) => {
-grid.innerHTML += <div class="product-card"> <button class="btn-delete-item" style="display: ${checkAdmin ? 'flex' : 'none'}" onclick="deleteProduct(${index})"> <i class="fa-solid fa-trash-can"></i> </button> <div class="product-image-wrapper"> <img src="${prod.img}" alt="${prod.nome}" class="product-img" loading="lazy"> </div> <div class="product-info"> <h3 class="product-title">${prod.nome}</h3> <a href="${prod.link}" target="_blank" class="btn-shopee"> <i class="fa-solid fa-bag-shopping"></i> Eu Quero! </a> </div> </div>;
-});
-}
-// Funções de Gerenciamento Visual (Painel Admin)
-function createNewProduct() {
-const nome = document.getElementById('add-title').value.trim();
-const img = document.getElementById('add-img').value.trim();
-const link = document.getElementById('add-link').value.trim();
-if (!nome || !img || !link) {
-alert('Preencha todas as caixas de informação!');
-return;
-}
-activeProducts.unshift({ nome, img, link }); // Insere sempre no topo da vitrine
-// Limpa os campos
-document.getElementById('add-title').value = '';
-document.getElementById('add-img').value = '';
-document.getElementById('add-link').value = '';
-renderProducts();
-alert('Adicionado temporariamente na pré-visualização! Clique em "Gerar Código" para salvar permanentemente.');
-}
-function deleteProduct(index) {
-if(confirm("Deseja mesmo remover este item da lista?")) {
-activeProducts.splice(index, 1);
-renderProducts();
-}
-}
-// Exportador de Dados Seguro para o GitHub Pages
-function exportDatabase() {
-const jsonString = JSON.stringify(activeProducts, null, 12);
-const outputBox = document.getElementById('output-box');
-const outputTextarea = document.getElementById('output-json');
-outputTextarea.value = jsonString;
-outputBox.style.display = 'block';
-alert('Código gerado com sucesso! Siga as instruções abaixo no painel.');
-}
-// Executar na inicialização da página
-renderProducts();
-
-
-
