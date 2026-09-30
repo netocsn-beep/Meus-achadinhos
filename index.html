@@ -213,7 +213,7 @@
     </div>
 
     <script>
-        // Link e ID oficiais extraídos da sua planilha do Google Workspace
+        // Carregamento otimizado via ID direto da planilha informada
         const PLANILHA_ID = "10v0iA1qh3q5MHI7HKObh0uFqjZNf0hdizMspbK3i2ZM"; 
         const URL_PLANILHA = `https://google.com{PLANILHA_ID}/gviz/tq?tqx=out:json`;
 
@@ -225,20 +225,19 @@
                 const response = await fetch(URL_PLANILHA);
                 const text = await response.text();
                 
+                // Tratamento estrito do JSON retornado pelo Google Sheets API
                 const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*?)\);/);
-                if (!match) {
-                    throw new Error("Formato de resposta inválido do Google Planilhas.");
+                if (!match || !match[1]) {
+                    throw new Error("Formato inválido.");
                 }
                 
-                // CORREÇÃO DEFINITIVA: Pegando o índice [1] do match para parsear o JSON correto
                 const jsonData = JSON.parse(match[1]);
                 const rows = jsonData.table.rows;
                 
-                // Mapeamento à prova de falhas baseado na sua tabela real:
-                // Coluna A (0) = Nome | Coluna B (1) = Link Shopee | Coluna C (2) = Preço | Coluna D (3) = Imagem
                 allProducts = rows.map(row => {
                     if (!row || !row.c) return null;
                     
+                    // Coluna A (0) = Nome | Coluna B (1) = Link | Coluna C (2) = Preço | Coluna D (3) = Imagem
                     const nome = (row.c[0] && row.c[0].v !== null) ? row.c[0].v.toString() : '';
                     const link = (row.c[1] && row.c[1].v !== null) ? row.c[1].v.toString() : '#';
                     
@@ -247,10 +246,10 @@
                         preco = 'R$ ' + preco;
                     }
 
-                    // Verifica se há link de imagem válido na coluna D (índice 3)
+                    // Se a imagem da coluna D estiver vazia, injeta um marcador padrão elegante
                     const img = (row.c[3] && row.c[3].v !== null && row.c[3].v.toString().trim() !== '') 
                                 ? row.c[3].v.toString() 
-                                : 'https://unsplash.com'; // Imagem provisória elegante
+                                : 'https://unsplash.com'; 
 
                     return { nome, img, link, preco };
                 }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== 'nome');
@@ -258,8 +257,8 @@
                 allProducts.reverse(); 
                 renderProducts(allProducts);
             } catch (error) {
-                console.error("Erro técnico capturado:", error);
-                grid.innerHTML = `<div class="status-message" style="color: red;"><i class="fa-solid fa-triangle-exclamation"></i> Erro ao carregar os dados. Verifique no menu 'Compartilhar' da sua planilha se o acesso geral está marcado como 'Qualquer pessoa com o link'.</div>`;
+                console.error("Erro interno:", error);
+                grid.innerHTML = `<div class="status-message" style="color: #d03112;"><i class="fa-solid fa-triangle-exclamation"></i> Certifique-se de acessar a sua planilha, ir em 'Compartilhar' e mudar o acesso para 'Qualquer pessoa com o link' em modo Leitor.</div>`;
             }
         }
 
@@ -285,3 +284,8 @@
                             <i class="fa-solid fa-bag-shopping"></i> Comprar
                         </a>
                     </div>
+                </div>
+            `).join('');
+        }
+
+        function filterProducts() {
