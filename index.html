@@ -210,31 +210,31 @@
     <script>
         const PLANILHA_ID = "10v0iA1qh3q5MHI7HKObh0uFqjZNf0hdizMspbK3i2ZM"; 
         
-        // Conexão via JSONP: Envia uma requisição limpa que ignora bloqueios de CORS do navegador
-        const URL_PLANILHA = `https://google.com{PLANILHA_ID}/gviz/tq?tqx=responseHandler:processarDados`;
+        // SOLUÇÃO REAL: Usando responseHandler para o Google mandar os dados direto para a função 'desenharProdutos'
+        const URL_PLANILHA = `https://google.com{PLANILHA_ID}/gviz/tq?tqx=responseHandler:desenharProdutos`;
 
         let allProducts = [];
 
         function fetchProducts() {
-            // Cria um elemento de script na página para contornar a segurança do navegador
+            // Injeta o script dinamicamente para pular os bloqueios de segurança (CORS) do navegador
             const script = document.createElement('script');
             script.src = URL_PLANILHA;
             script.onerror = function() {
-                document.getElementById('productGrid').innerHTML = `<div class="status-message" style="color: red;"><i class="fa-solid fa-triangle-exclamation"></i> Erro ao carregar dados. Verifique a conexão.</div>`;
+                document.getElementById('productGrid').innerHTML = `<div class="status-message" style="color: red;"><i class="fa-solid fa-triangle-exclamation"></i> Erro de comunicação com o Google.</div>`;
             };
             document.body.appendChild(script);
         }
 
-        // Essa função roda AUTOMATICAMENTE recebendo os dados brutos enviados pelo Google
-        function processarDados(resposta) {
-            if (!resposta || !resposta.table || !resposta.table.rows) {
-                document.getElementById('productGrid').innerHTML = `<div class="status-message">Nenhum produto encontrado na planilha.</div>`;
+        // Essa função roda sozinha recebendo as linhas prontas da planilha do Google
+        function desenharProdutos(respostaGoogle) {
+            if (!respostaGoogle || !respostaGoogle.table || !respostaGoogle.table.rows) {
+                document.getElementById('productGrid').innerHTML = `<div class="status-message">Nenhum produto cadastrado na tabela.</div>`;
                 return;
             }
 
-            const rows = resposta.table.rows;
+            const rows = respostaGoogle.table.rows;
 
-            // Mapeamento correto com checagem estrita para a ordem: A=Nome, B=Link, C=Preço
+            // Mapeamento correto baseado na sua planilha real: A=Nome, B=Link, C=Preço, D=Imagem
             allProducts = rows.map(row => {
                 if (!row || !row.c) return null;
 
@@ -246,7 +246,7 @@
                     preco = 'R$ ' + preco;
                 }
 
-                // Coluna D (Índice 3) para imagem. Como está em branco, aplica uma foto coringa padrão de produto.
+                // Coluna D (3) para fotos. Como está vazia, joga uma imagem padrão bonita automática
                 const img = (row.c[3] && row.c[3].v !== null && row.c[3].v.toString().trim() !== '') 
                             ? row.c[3].v.toString() 
                             : 'https://unsplash.com';
@@ -254,7 +254,7 @@
                 return { nome, img, link, preco };
             }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== 'nome');
 
-            allProducts.reverse(); 
+            allProducts.reverse();
             renderProducts(allProducts);
         }
 
@@ -287,3 +287,5 @@
         function filterProducts() {
             const searchTerm = document.getElementById('searchBar').value.toLowerCase();
             const filtered = allProducts.filter(product => 
+                product.nome.toLowerCase().includes(searchTerm)
+            );
