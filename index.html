@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meus Achadinhos Shopee</title>
+    <!-- Bibliotecas de ícones -->
     <link rel="stylesheet" href="https://cloudflare.com">
     <style>
         :root {
@@ -207,55 +208,51 @@
     </div>
 
     <script>
+        // ID da sua planilha integrada diretamente
         const PLANILHA_ID = "10v0iA1qh3q5MHI7HKObh0uFqjZNf0hdizMspbK3i2ZM"; 
         
-        // Mudança crucial: Usando responseHandler para processar os dados de forma limpa e nativa
-        const URL_PLANILHA = `https://google.com{PLANILHA_ID}/gviz/tq?tqx=responseHandler:gvizJson`;
+        // Mudança essencial: Exportação direta em CSV para pular os bloqueios do navegador
+        const URL_PLANILHA = `https://google.com{PLANILHA_ID}/export?format=csv`;
 
         let allProducts = [];
 
-        function fetchProducts() {
-            // Remove scripts antigos para evitar duplicidade no carregamento
-            const oldScript = document.getElementById('gviz-script');
-            if (oldScript) oldScript.remove();
-
-            const script = document.createElement('script');
-            script.id = 'gviz-script';
-            script.src = URL_PLANILHA;
-            script.onerror = () => {
-                document.getElementById('productGrid').innerHTML = `<div class="status-message" style="color: #d03112;"><i class="fa-solid fa-triangle-exclamation"></i> Erro de conexão. Verifique se a planilha está pública.</div>`;
-            };
-            document.body.appendChild(script);
-        }
-
-        // Esta função roda automaticamente quando o Google Sheets responde
-        function gvizJson(data) {
-            if (!data || !data.table || !data.table.rows) {
-                document.getElementById('productGrid').innerHTML = `<div class="status-message">Nenhum dado encontrado.</div>`;
-                return;
-            }
-
-            const rows = data.table.rows;
-
-            allProducts = rows.map(row => {
-                if (!row || !row.c) return null;
-
-                // Mapeamento seguro usando os índices corretos das colunas (A=0, B=1, C=2, D=3)
-                const nome = row.c[0] && row.c[0].v ? row.c[0].v.toString() : '';
-                const link = row.c[1] && row.c[1].v ? row.c[1].v.toString() : '#';
+        async function fetchProducts() {
+            const grid = document.getElementById('productGrid');
+            try {
+                const response = await fetch(URL_PLANILHA);
+                const csvText = await response.text();
                 
-                let preco = row.c[2] && row.c[2].v ? row.c[2].v.toString().trim() : '';
-                if (preco && !preco.includes('R\$')) {
-                    preco = 'R\$ ' + preco;
-                }
+                // Conversão simples e robusta do formato CSV para objetos Javascript
+                const lines = csvText.split('\n');
+                
+                allProducts = lines.slice(1).map(line => {
+                    // Divide os dados respeitando as vírgulas da tabela
+                    const columns = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*\$)/);
+                    if (columns.length < 3) return null;
 
-                const img = row.c[3] && row.c[3].v ? row.c[3].v.toString() : 'https://unsplash.com';
+                    // Limpa as aspas geradas no formato CSV
+                    const nome = columns[0] ? columns[0].replace(/^"|"\$/g, '').trim() : '';
+                    const link = columns[1] ? columns[1].replace(/^"|"\$/g, '').trim() : '#';
+                    
+                    let preco = columns[2] ? columns[2].replace(/^"|"\$/g, '').trim() : '';
+                    if (preco && !preco.includes('R\$')) {
+                        preco = 'R\$ ' + preco;
+                    }
 
-                return { nome, img, link, preco };
-            }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== 'nome');
+                    // Coluna D (Índice 3) para Imagem. Se vazia, usa o placeholder elegante
+                    const img = (columns[3] && columns[3].replace(/^"|"\$/g, '').trim() !== '') 
+                                ? columns[3].replace(/^"|"\$/g, '').trim() 
+                                : 'https://unsplash.com';
 
-            allProducts.reverse();
-            renderProducts(allProducts);
+                    return { nome, img, link, preco };
+                }).filter(p => p !== null && p.nome !== '');
+
+                allProducts.reverse(); 
+                renderProducts(allProducts);
+            } catch (error) {
+                console.error("Erro interno capturado:", error);
+                grid.innerHTML = `<div class="status-message" style="color: #d03112;"><i class="fa-solid fa-triangle-exclamation"></i> Certifique-se de acessar a sua planilha, ir no botão azul 'Compartilhar' e alterar o acesso para 'Qualquer pessoa com o link'.</div>`;
+            }
         }
 
         function renderProducts(productsList) {
