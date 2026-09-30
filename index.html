@@ -209,23 +209,19 @@
 
     <script>
         const PLANILHA_ID = "10v0iA1qh3q5MHI7HKObh0uFqjZNf0hdizMspbK3i2ZM"; 
-        
-        // SOLUÇÃO REAL: Usando responseHandler para o Google mandar os dados direto para a função 'desenharProdutos'
         const URL_PLANILHA = `https://google.com{PLANILHA_ID}/gviz/tq?tqx=responseHandler:desenharProdutos`;
 
         let allProducts = [];
 
         function fetchProducts() {
-            // Injeta o script dinamicamente para pular os bloqueios de segurança (CORS) do navegador
             const script = document.createElement('script');
             script.src = URL_PLANILHA;
             script.onerror = function() {
-                document.getElementById('productGrid').innerHTML = `<div class="status-message" style="color: red;"><i class="fa-solid fa-triangle-exclamation"></i> Erro de comunicação com o Google.</div>`;
+                document.getElementById('productGrid').innerHTML = `<div class="status-message" style="color: red;"><i class="fa-solid fa-triangle-exclamation"></i> Erro ao carregar dados da planilha.</div>`;
             };
             document.body.appendChild(script);
         }
 
-        // Essa função roda sozinha recebendo as linhas prontas da planilha do Google
         function desenharProdutos(respostaGoogle) {
             if (!respostaGoogle || !respostaGoogle.table || !respostaGoogle.table.rows) {
                 document.getElementById('productGrid').innerHTML = `<div class="status-message">Nenhum produto cadastrado na tabela.</div>`;
@@ -234,19 +230,23 @@
 
             const rows = respostaGoogle.table.rows;
 
-            // Mapeamento correto baseado na sua planilha real: A=Nome, B=Link, C=Preço, D=Imagem
+            // CORREÇÃO CRÍTICA: Mapeamento com os índices corretos, [1], [2], [3]
             allProducts = rows.map(row => {
                 if (!row || !row.c) return null;
 
+                // Coluna A [0] = Nome do Produto
                 const nome = (row.c[0] && row.c[0].v !== null) ? row.c[0].v.toString() : '';
+                
+                // Coluna B [1] = Link de Compra da Shopee
                 const link = (row.c[1] && row.c[1].v !== null) ? row.c[1].v.toString() : '#';
                 
+                // Coluna C [2] = Preço do Produto
                 let preco = (row.c[2] && row.c[2].v !== null) ? row.c[2].v.toString().trim() : '';
-                if (preco && !preco.includes('R$')) {
-                    preco = 'R$ ' + preco;
+                if (preco && !preco.includes('R\$')) {
+                    preco = 'R\$ ' + preco;
                 }
 
-                // Coluna D (3) para fotos. Como está vazia, joga uma imagem padrão bonita automática
+                // Coluna D [3] = Link da Imagem (Se estiver vazio, usa a imagem provisória abaixo)
                 const img = (row.c[3] && row.c[3].v !== null && row.c[3].v.toString().trim() !== '') 
                             ? row.c[3].v.toString() 
                             : 'https://unsplash.com';
@@ -289,3 +289,10 @@
             const filtered = allProducts.filter(product => 
                 product.nome.toLowerCase().includes(searchTerm)
             );
+            renderProducts(filtered);
+        }
+
+        window.onload = fetchProducts;
+    </script>
+</body>
+</html>
