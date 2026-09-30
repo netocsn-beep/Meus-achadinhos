@@ -169,12 +169,13 @@
                 if (!response.ok) throw new Error("Erro ao carregar a planilha");
                 const csvText = await response.text();
                 
-                const lines = csvText.split('\n');
+                // Divide por quebras de linha tratando retornos extras do Windows
+                const lines = csvText.split(/\r?\n/);
                 
                 allProducts = lines.slice(1).map(line => {
                     if (!line || line.trim() === '') return null;
 
-                    // Divide as colunas considerando possíveis aspas no CSV
+                    // Divide as colunas de forma segura tratando vírgulas normais
                     const columns = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*\$)/);
                     if (columns.length < 3) return null;
 
