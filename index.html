@@ -213,9 +213,9 @@
     </div>
 
     <script>
-        // ID integrado diretamente da sua planilha do Google
+        // Link e ID oficiais extraídos da sua planilha do Google Workspace
         const PLANILHA_ID = "10v0iA1qh3q5MHI7HKObh0uFqjZNf0hdizMspbK3i2ZM"; 
-        const URL_PLANILHA = `https://docs.google.com/spreadsheets/d/${PLANILHA_ID}/gviz/tq?tqx=out:json`;
+        const URL_PLANILHA = `https://google.com{PLANILHA_ID}/gviz/tq?tqx=out:json`;
 
         let allProducts = [];
 
@@ -230,12 +230,12 @@
                     throw new Error("Formato de resposta inválido do Google Planilhas.");
                 }
                 
-                // CORREÇÃO CRÍTICA: Pegando a posição [1] para obter apenas a string do JSON puro
+                // CORREÇÃO DEFINITIVA: Pegando o índice [1] do match para parsear o JSON correto
                 const jsonData = JSON.parse(match[1]);
                 const rows = jsonData.table.rows;
                 
-                // Mapeamento exato das colunas da sua planilha:
-                // Coluna A (0) = Nome | Coluna B (1) = Link | Coluna C (2) = Preço | Coluna D (3) = Imagem
+                // Mapeamento à prova de falhas baseado na sua tabela real:
+                // Coluna A (0) = Nome | Coluna B (1) = Link Shopee | Coluna C (2) = Preço | Coluna D (3) = Imagem
                 allProducts = rows.map(row => {
                     if (!row || !row.c) return null;
                     
@@ -247,10 +247,10 @@
                         preco = 'R$ ' + preco;
                     }
 
-                    // Identifica se tem imagem na coluna D (3). Se estiver vazia, carrega uma imagem de caixa padrão.
+                    // Verifica se há link de imagem válido na coluna D (índice 3)
                     const img = (row.c[3] && row.c[3].v !== null && row.c[3].v.toString().trim() !== '') 
                                 ? row.c[3].v.toString() 
-                                : 'https://unsplash.com'; 
+                                : 'https://unsplash.com'; // Imagem provisória elegante
 
                     return { nome, img, link, preco };
                 }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== 'nome');
@@ -258,8 +258,8 @@
                 allProducts.reverse(); 
                 renderProducts(allProducts);
             } catch (error) {
-                console.error("Erro detalhado:", error);
-                grid.innerHTML = `<div class="status-message" style="color: red;"><i class="fa-solid fa-triangle-exclamation"></i> Erro ao carregar os produtos. Verifique se o compartilhamento da planilha está definido para 'Qualquer pessoa com o link'.</div>`;
+                console.error("Erro técnico capturado:", error);
+                grid.innerHTML = `<div class="status-message" style="color: red;"><i class="fa-solid fa-triangle-exclamation"></i> Erro ao carregar os dados. Verifique no menu 'Compartilhar' da sua planilha se o acesso geral está marcado como 'Qualquer pessoa com o link'.</div>`;
             }
         }
 
@@ -285,7 +285,3 @@
                             <i class="fa-solid fa-bag-shopping"></i> Comprar
                         </a>
                     </div>
-                </div>
-            `).join('');
-        }
-
