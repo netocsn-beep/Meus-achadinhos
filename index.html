@@ -192,9 +192,10 @@
 
     <div class="container">
         <header class="profile-header">
+            <!-- Link seguro de avatar padrão que não quebra no celular -->
             <img src="https://github.com" alt="Avatar" class="profile-avatar">
             <h1 class="profile-name">@achadinhos.shopee</h1>
-            <p class="profile-bio">Os melhores produtos e utilidades da Shopee com descontos imperdíveis! Atualizado diretamente pela planilha. 🔥👇</p>
+            <p class="profile-bio">Os melhores produtos e utilidades da Shopee com descontos imperdíveis! 🔥👇</p>
         </header>
 
         <div class="search-container">
@@ -202,62 +203,24 @@
             <input type="text" class="search-input" id="searchBar" placeholder="Buscar por um achadinho..." oninput="filterProducts()">
         </div>
 
-        <main class="products-grid" id="productGrid">
-            <div class="status-message" id="loadingMessage"><i class="fa-solid fa-spinner fa-spin"></i> Carregando achadinhos...</div>
-        </main>
+        <main class="products-grid" id="productGrid"></main>
     </div>
 
     <script>
-        const PLANILHA_ID = "10v0iA1qh3q5MHI7HKObh0uFqjZNf0hdizMspbK3i2ZM"; 
-        
-        // SOLUÇÃO REAL MOBILE: Exportação direta em CSV (Texto puro, totalmente livre de bloqueios de segurança do celular)
-        const URL_PLANILHA = `https://google.com{PLANILHA_ID}/export?format=csv`;
-
-        let allProducts = [];
-
-        async function fetchProducts() {
-            const grid = document.getElementById('productGrid');
-            try {
-                const response = await fetch(URL_PLANILHA);
-                if (!response.ok) {
-                    throw new Error("Erro de resposta do Google.");
-                }
-                const csvText = await response.text();
-                
-                // Quebra as linhas do CSV
-                const lines = csvText.split('\n');
-                
-                // Mapeamento seguro linha por linha ignorando o cabeçalho
-                allProducts = lines.slice(1).map(line => {
-                    if (!line || line.trim() === '') return null;
-
-                    // Divide as colunas respeitando as vírgulas
-                    const columns = line.split(',');
-                    if (columns.length < 3) return null;
-
-                    // Remove as aspas do formato CSV
-                    const nome = columns[0] ? columns[0].replace(/"/g, '').trim() : '';
-                    const link = columns[1] ? columns[1].replace(/"/g, '').trim() : '#';
-                    
-                    let preco = columns[2] ? columns[2].replace(/"/g, '').trim() : '';
-                    if (preco && !preco.includes('R$')) {
-                        preco = 'R$ ' + preco;
-                    }
-
-                    // Coluna D (Índice 3) para imagem. Se vazia, bota o placeholder padrão cinza elegante
-                    const img = (columns[3] && columns[3].replace(/"/g, '').trim() !== '') 
-                                ? columns[3].replace(/"/g, '').trim() 
-                                : 'https://unsplash.com';
-
-                    return { nome, img, link, preco };
-                }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== 'nome');
-
-                allProducts.reverse(); 
-                renderProducts(allProducts);
-            } catch (error) {
-                console.error("Erro interno:", error);
-                grid.innerHTML = `<div class="status-message" style="color: red;"><i class="fa-solid fa-triangle-exclamation"></i> Erro de segurança do navegador ao carregar a planilha. Certifique-se de que o acesso geral está como público.</div>`;
+        // BANCO DE DADOS INTEGRADO: Adicione ou remova seus produtos diretamente aqui!
+        // Ordem dos campos: nome, link, preco, img (caso não tenha foto, deixe '')
+        const listaDeProdutos = [
+            {
+                nome: "Kit 50 Esponjas Mágicas",
+                link: "https://shopee.com.br",
+                preco: "R\$ 12,00",
+                img: "" 
             }
+            // Para adicionar um novo produto, coloque uma vírgula aqui e crie outro bloco {...}
+        ];
+
+        function carregarAchadinhos() {
+            renderProducts(listaDeProdutos);
         }
 
         function renderProducts(productsList) {
@@ -268,24 +231,38 @@
                 return;
             }
 
-            grid.innerHTML = productsList.map(product => `
-                <div class="product-card">
-                    <div class="product-image-wrapper">
-                        <img src="${product.img}" alt="${product.nome}" class="product-img" onerror="this.src='https://unsplash.com'">
-                    </div>
-                    <div class="product-info">
-                        <h2 class="product-title" title="${product.nome}">${product.nome}</h2>
-                        <div class="price-container">
-                            <span class="price-tag">${product.preco || 'R$ --'}</span>
+            grid.innerHTML = productsList.map(product => {
+                // Define uma foto cinza padrão se o campo 'img' estiver vazio
+                const fotoProduto = product.img.trim() !== '' ? product.img : 'https://unsplash.com';
+                
+                return `
+                    <div class="product-card">
+                        <div class="product-image-wrapper">
+                            <img src="${fotoProduto}" alt="${product.nome}" class="product-img" onerror="this.src='https://unsplash.com'">
                         </div>
-                        <a href="${product.link}" target="_blank" class="btn-shopee">
-                            <i class="fa-solid fa-bag-shopping"></i> Comprar
-                        </a>
+                        <div class="product-info">
+                            <h2 class="product-title" title="${product.nome}">${product.nome}</h2>
+                            <div class="price-container">
+                                <span class="price-tag">${product.preco}</span>
+                            </div>
+                            <a href="${product.link}" target="_blank" class="btn-shopee">
+                                <i class="fa-solid fa-bag-shopping"></i> Comprar
+                            </a>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function filterProducts() {
             const searchTerm = document.getElementById('searchBar').value.toLowerCase();
-            const filtered = allProducts.filter(product => 
+            const filtered = listaDeProdutos.filter(product => 
+                product.nome.toLowerCase().includes(searchTerm)
+            );
+            renderProducts(filtered);
+        }
+
+        window.onload = carregarAchadinhos;
+    </script>
+</body>
+</html>
