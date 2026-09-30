@@ -214,15 +214,25 @@
         let allProducts = [];
 
         function fetchProducts() {
+            // SISTEMA ANTI-TRAVAMENTO: Se a planilha demorar mais de 6 segundos para carregar devido ao bloqueio CORS HTTP, força a exibição do erro.
+            const timeout = setTimeout(() => {
+                const grid = document.getElementById('productGrid');
+                if (grid && grid.innerHTML.includes('Carregando')) {
+                    grid.innerHTML = `<div class="status-message" style="color: red;"><i class="fa-solid fa-triangle-exclamation"></i> Erro de segurança do navegador. Certifique-se de acessar usando o link seguro <strong>HTTPS://</strong> no início da URL.</div>`;
+                }
+            }, 6000);
+
             const script = document.createElement('script');
             script.src = URL_PLANILHA;
             script.onerror = function() {
-                document.getElementById('productGrid').innerHTML = `<div class="status-message" style="color: red;"><i class="fa-solid fa-triangle-exclamation"></i> Erro ao carregar dados da planilha.</div>`;
+                clearTimeout(timeout);
+                document.getElementById('productGrid').innerHTML = `<div class="status-message" style="color: red;"><i class="fa-solid fa-triangle-exclamation"></i> Erro ao conectar com o Google Sheets.</div>`;
             };
             document.body.appendChild(script);
         }
 
         function desenharProdutos(respostaGoogle) {
+            const nomeFiltro = 'nome';
             if (!respostaGoogle || !respostaGoogle.table || !respostaGoogle.table.rows) {
                 document.getElementById('productGrid').innerHTML = `<div class="status-message">Nenhum produto cadastrado na tabela.</div>`;
                 return;
@@ -230,29 +240,25 @@
 
             const rows = respostaGoogle.table.rows;
 
-            // CORREÇÃO CRÍTICA: Mapeamento com os índices corretos, [1], [2], [3]
             allProducts = rows.map(row => {
                 if (!row || !row.c) return null;
 
-                // Coluna A [0] = Nome do Produto
+                // Mapeamento correto das suas colunas: A=0 (Nome), B=1 (Link), C=2 (Preço)
                 const nome = (row.c[0] && row.c[0].v !== null) ? row.c[0].v.toString() : '';
-                
-                // Coluna B [1] = Link de Compra da Shopee
                 const link = (row.c[1] && row.c[1].v !== null) ? row.c[1].v.toString() : '#';
                 
-                // Coluna C [2] = Preço do Produto
                 let preco = (row.c[2] && row.c[2].v !== null) ? row.c[2].v.toString().trim() : '';
-                if (preco && !preco.includes('R\$')) {
-                    preco = 'R\$ ' + preco;
+                if (preco && !preco.includes('R$')) {
+                    preco = 'R$ ' + preco;
                 }
 
-                // Coluna D [3] = Link da Imagem (Se estiver vazio, usa a imagem provisória abaixo)
+                // Coluna D (3) para imagem. Se vazia, injeta imagem provisória elegante de produto
                 const img = (row.c[3] && row.c[3].v !== null && row.c[3].v.toString().trim() !== '') 
                             ? row.c[3].v.toString() 
                             : 'https://unsplash.com';
 
                 return { nome, img, link, preco };
-            }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== 'nome');
+            }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== nomeFiltro);
 
             allProducts.reverse();
             renderProducts(allProducts);
@@ -277,22 +283,3 @@
                             <span class="price-tag">${product.preco || 'R$ --'}</span>
                         </div>
                         <a href="${product.link}" target="_blank" class="btn-shopee">
-                            <i class="fa-solid fa-bag-shopping"></i> Comprar
-                        </a>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function filterProducts() {
-            const searchTerm = document.getElementById('searchBar').value.toLowerCase();
-            const filtered = allProducts.filter(product => 
-                product.nome.toLowerCase().includes(searchTerm)
-            );
-            renderProducts(filtered);
-        }
-
-        window.onload = fetchProducts;
-    </script>
-</body>
-</html>
