@@ -158,10 +158,9 @@
 
         let allProducts = [];
 
-        // Inicializa a busca ao carregar a página
         window.addEventListener('DOMContentLoaded', fetchProducts);
 
-        // Função robusta para dividir linhas de CSV contendo aspas e vírgulas nos valores (ex: "R\$ 19,90")
+        // Separa as colunas do CSV respeitando valores entre aspas
         function parseCSVLine(text) {
             let p = '', c = [];
             let q = false;
@@ -187,39 +186,38 @@
                 if (!response.ok) throw new Error("Erro ao carregar a planilha");
                 const csvText = await response.text();
                 
-                // Divide por quebra de linha de forma universal
                 const lines = csvText.split(/\r?\n/);
                 
                 allProducts = lines.slice(1).map(line => {
                     if (!line || line.trim() === '') return null;
 
-                    // Processa a linha respeitando as aspas
                     const columns = parseCSVLine(line);
                     if (columns.length < 3) return null;
 
-                    // Mapeamento correto das colunas
-                    const nome = columns[0] ? columns[0].replace(/^"|"\$/g, '').trim() : '';
-                    const link = columns[1] ? columns[1].replace(/^"|"\$/g, '').trim() : '#';
-                    
-                    let preco = columns[2] ? columns[2].replace(/^"|"\$/g, '').trim() : '';
-                    // Formata a exibição do preço caso falte o R\(if (preco && !preco.toLowerCase().includes('r\)')) {
+                    // Remove aspas sobressalentes geradas pelo formato CSV
+                    const limpar = (txt) => txt ? txt.replace(/^"|"\$/g, '').trim() : '';
+
+                    // MAPEAMENTO CORRETO: [0] Nome, [1] Link, [2] Preço, [3] Imagem
+                    const nome  = limpar(columns[0]);
+                    const link  = limpar(columns[1]);
+                    let preco   = limpar(columns[2]);
+                    const img   = columns[3] ? limpar(columns[3]) : '';
+
+                    // Garante que o preço exiba o cifrão R\(if (preco && !preco.toLowerCase().includes('r\)')) {
                         preco = 'R\$ ' + preco;
                     }
 
-                    // Verifica se a imagem existe, senão põe um placeholder elegante
-                    const img = (columns[3] && columns[3].trim() !== '') 
-                                ? columns[3].replace(/^"|"\$/g, '').trim() 
-                                : 'https://unsplash.com';
+                    // Imagem padrão caso o campo esteja vazio
+                    const imagemFinal = (img !== '') ? img : 'https://unsplash.com';
 
-                    return { nome, img, link, preco };
+                    return { nome, img: imagemFinal, link, preco };
                 }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== 'nome');
 
-                // Inverte a ordem para mostrar os achadinhos mais recentes primeiro
                 allProducts.reverse(); 
                 renderProducts(allProducts);
             } catch (error) {
                 console.error(error);
-                grid.innerHTML = `<div class="status-message" style="color: #ee4d2d;"><i class="fa-solid fa-triangle-exclamation"></i> Certifique-se de que a planilha foi 'Publicada na Web' como CSV.</div>`;
+                grid.innerHTML = `<div class="status-message" style="color: #ee4d2d;"><i class="fa-solid fa-triangle-exclamation"></i> Erro ao carregar os dados. Verifique sua conexão ou se a planilha está pública.</div>`;
             }
         }
 
