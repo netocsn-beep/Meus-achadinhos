@@ -194,7 +194,7 @@
     </div>
 
     <script>
-        // CONFIGURAÇÃO DA SUA PLANILHA INSTALADA
+        // Link correto apontando para o ID da sua planilha pública
         const URL_PLANILHA = "https://google.com";
 
         let allProducts = [];
@@ -204,24 +204,28 @@
                 const response = await fetch(URL_PLANILHA);
                 const text = await response.text();
                 
+                // Mapeia e extrai o JSON ignorando os textos de segurança da Google
                 const jsonData = JSON.parse(text.substring(47, text.length - 2));
                 const rows = jsonData.table.rows;
                 
                 allProducts = rows.map(row => {
-                    return {
-                        nome: (row.c && row.c[0]) ? row.c[0].v : '',
-                        img: (row.c && row.c[1]) ? row.c[1].v : 'https://unsplash.com',
-                        link: (row.c && row.c[2]) ? row.c[2].v : '#'
-                    };
-                }).filter(p => p.nome !== 'Nome' && p.nome !== ''); 
+                    // Proteção extra linha por linha e coluna por coluna contra células vazias
+                    const nome = (row.c && row.c[0] && row.c[0].v) ? row.c[0].v.toString() : '';
+                    const img = (row.c && row.c[1] && row.c[1].v) ? row.c[1].v.toString() : 'https://unsplash.com';
+                    const link = (row.c && row.c[2] && row.c[2].v) ? row.c[2].v.toString() : '#';
+                    
+                    return { nome, img, link };
+                }).filter(p => p.nome !== '' && p.nome.toLowerCase() !== 'nome'); // Remove cabeçalhos e vazios
 
+                // Exibe os mais recentes no topo
                 allProducts.reverse(); 
                 renderProducts(allProducts);
             } catch (error) {
-                console.error(error);
+                console.error("Erro na leitura:", error);
                 document.getElementById('productGrid').innerHTML = `
                     <div class="status-message" style="color:#dc3545;">
-                        <i class="fa-solid fa-circle-exclamation"></i> Erro ao carregar os dados. Certifique-se de que a planilha está configurada como 'Qualquer pessoa com o link'.
+                        <i class="fa-solid fa-circle-exclamation"></i> Erro ao sincronizar dados.<br>
+                        <span style="font-size:0.8rem; color:#757575;">Verifique se a planilha está configurada para "Qualquer pessoa com o link" no botão Compartilhar.</span>
                     </div>`;
             }
         }
@@ -231,7 +235,7 @@
             grid.innerHTML = '';
 
             if(productsList.length === 0) {
-                grid.innerHTML = `<p class="status-message">Nenhum produto cadastrado na planilha ainda 😢</p>`;
+                grid.innerHTML = `<p class="status-message">Insira um produto na sua planilha para ele aparecer aqui! 📝</p>`;
                 return;
             }
 
