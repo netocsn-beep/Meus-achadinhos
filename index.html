@@ -192,7 +192,7 @@
 
     <div class="container">
         <header class="profile-header">
-            <img src="https://unsplash.com" alt="Avatar" class="profile-avatar" onerror="this.src='https://github.com'">
+            <img src="https://github.com" alt="Avatar" class="profile-avatar">
             <h1 class="profile-name">@achadinhos.shopee</h1>
             <p class="profile-bio">Os melhores produtos e utilidades da Shopee com descontos imperdíveis! Atualizado diretamente pela planilha. 🔥👇</p>
         </header>
@@ -203,89 +203,89 @@
         </div>
 
         <main class="products-grid" id="productGrid">
-            <div class="status-message" id="loadingMessage"><i class="fa-solid fa-spinner fa-spin"></i> <span id="loadingText">Carregando achadinhos...</span></div>
+            <div class="status-message" id="loadingMessage"><i class="fa-solid fa-spinner fa-spin"></i> Carregando achadinhos...</div>
         </main>
     </div>
 
     <script>
         const PLANILHA_ID = "10v0iA1qh3q5MHI7HKObh0uFqjZNf0hdizMspbK3i2ZM"; 
+        
+        // SOLUÇÃO REAL MOBILE: Exportação direta em CSV (Texto puro, totalmente livre de bloqueios de segurança do celular)
+        const URL_PLANILHA = `https://google.com{PLANILHA_ID}/export?format=csv`;
+
         let allProducts = [];
-        let carregouComSucesso = false;
-        let timeoutEstrategia;
 
-        // INICIALIZADOR: Gerencia as tentativas se houver falha
-        function fetchProducts() {
-            tentarEstrategia1();
-        }
-
-        // ==========================================
-        // ESTRATÉGIA 1: API JSONP Oficial (Sem CORS)
-        // ==========================================
-        function tentarEstrategia1() {
-            atualizarTextoStatus("Tentando conectar com o servidor (Modo 1)...");
-            
-            // Se o Google não responder em 3.5 segundos, pula para a estratégia 2
-            timeoutEstrategia = setTimeout(() => {
-                if (!carregouComSucesso) {
-                    limparTagsScript();
-                    tentarEstrategia2();
+        async function fetchProducts() {
+            const grid = document.getElementById('productGrid');
+            try {
+                const response = await fetch(URL_PLANILHA);
+                if (!response.ok) {
+                    throw new Error("Erro de resposta do Google.");
                 }
-            }, 3500);
-
-            const script = document.createElement('script');
-            script.id = 'script-gviz';
-            script.src = `https://google.com{PLANILHA_ID}/gviz/tq?tqx=responseHandler:processarGviz`;
-            script.onerror = () => {
-                clearTimeout(timeoutEstrategia);
-                tentarEstrategia2();
-            };
-            document.body.appendChild(script);
-        }
-
-        // Callback oficial da Estratégia 1
-        function processarGviz(resposta) {
-            clearTimeout(timeoutEstrategia);
-            if (carregouComSucesso) return;
-
-            try {
-                if (!resposta || !resposta.table || !resposta.table.rows) throw new Error();
-                const rows = resposta.table.rows;
-
-                allProducts = rows.map(row => {
-                    if (!row || !row.c) return null;
-                    const nome = row.c[0] && row.c[0].v !== null ? row.c[0].v.toString() : '';
-                    const link = row.c[1] && row.c[1].v !== null ? row.c[1].v.toString() : '#';
-                    let preco = row.c[2] && row.c[2].v !== null ? row.c[2].v.toString().trim() : '';
-                    if (preco && !preco.includes('R$')) preco = 'R$ ' + preco;
-                    const img = row.c[3] && row.c[3].v !== null && row.c[3].v.toString().trim() !== '' ? row.c[3].v.toString() : 'https://unsplash.com';
-                    return { nome, img, link, preco };
-                }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== 'nome');
-
-                finalizarCarregamento();
-            } catch (e) {
-                tentarEstrategia2();
-            }
-        }
-
-        // ==========================================
-        // ESTRATÉGIA 2: Exportação CSV via Fetch
-        // ==========================================
-        async function tentarEstrategia2() {
-            if (carregouComSucesso) return;
-            atualizarTextoStatus("Buscando dados alternativos (Modo 2)...");
-
-            try {
-                const response = await fetch(`https://google.com{PLANILHA_ID}/export?format=csv`);
-                if (!response.ok) throw new Error();
                 const csvText = await response.text();
                 
+                // Quebra as linhas do CSV
                 const lines = csvText.split('\n');
+                
+                // Mapeamento seguro linha por linha ignorando o cabeçalho
                 allProducts = lines.slice(1).map(line => {
                     if (!line || line.trim() === '') return null;
+
+                    // Divide as colunas respeitando as vírgulas
                     const columns = line.split(',');
                     if (columns.length < 3) return null;
 
+                    // Remove as aspas do formato CSV
                     const nome = columns[0] ? columns[0].replace(/"/g, '').trim() : '';
                     const link = columns[1] ? columns[1].replace(/"/g, '').trim() : '#';
+                    
                     let preco = columns[2] ? columns[2].replace(/"/g, '').trim() : '';
-                    if (preco && !preco.includes('R$')) preco = 'R$ ' + preco;
+                    if (preco && !preco.includes('R$')) {
+                        preco = 'R$ ' + preco;
+                    }
+
+                    // Coluna D (Índice 3) para imagem. Se vazia, bota o placeholder padrão cinza elegante
+                    const img = (columns[3] && columns[3].replace(/"/g, '').trim() !== '') 
+                                ? columns[3].replace(/"/g, '').trim() 
+                                : 'https://unsplash.com';
+
+                    return { nome, img, link, preco };
+                }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== 'nome');
+
+                allProducts.reverse(); 
+                renderProducts(allProducts);
+            } catch (error) {
+                console.error("Erro interno:", error);
+                grid.innerHTML = `<div class="status-message" style="color: red;"><i class="fa-solid fa-triangle-exclamation"></i> Erro de segurança do navegador ao carregar a planilha. Certifique-se de que o acesso geral está como público.</div>`;
+            }
+        }
+
+        function renderProducts(productsList) {
+            const grid = document.getElementById('productGrid');
+            
+            if (productsList.length === 0) {
+                grid.innerHTML = `<div class="status-message">Nenhum achadinho encontrado.</div>`;
+                return;
+            }
+
+            grid.innerHTML = productsList.map(product => `
+                <div class="product-card">
+                    <div class="product-image-wrapper">
+                        <img src="${product.img}" alt="${product.nome}" class="product-img" onerror="this.src='https://unsplash.com'">
+                    </div>
+                    <div class="product-info">
+                        <h2 class="product-title" title="${product.nome}">${product.nome}</h2>
+                        <div class="price-container">
+                            <span class="price-tag">${product.preco || 'R$ --'}</span>
+                        </div>
+                        <a href="${product.link}" target="_blank" class="btn-shopee">
+                            <i class="fa-solid fa-bag-shopping"></i> Comprar
+                        </a>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterProducts() {
+            const searchTerm = document.getElementById('searchBar').value.toLowerCase();
+            const filtered = allProducts.filter(product => 
