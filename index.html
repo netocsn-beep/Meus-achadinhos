@@ -192,10 +192,9 @@
 
     <div class="container">
         <header class="profile-header">
-            <!-- Link seguro de avatar padrão que não quebra no celular -->
             <img src="https://github.com" alt="Avatar" class="profile-avatar">
             <h1 class="profile-name">@achadinhos.shopee</h1>
-            <p class="profile-bio">Os melhores produtos e utilidades da Shopee com descontos imperdíveis! 🔥👇</p>
+            <p class="profile-bio">Os melhores produtos e utilidades da Shopee com descontos imperdíveis! Atualizado diretamente pela planilha. 🔥👇</p>
         </header>
 
         <div class="search-container">
@@ -203,66 +202,96 @@
             <input type="text" class="search-input" id="searchBar" placeholder="Buscar por um achadinho..." oninput="filterProducts()">
         </div>
 
-        <main class="products-grid" id="productGrid"></main>
+        <main class="products-grid" id="productGrid">
+            <div class="status-message" id="loadingMessage"><i class="fa-solid fa-spinner fa-spin"></i> Carregando achadinhos...</div>
+        </main>
     </div>
 
     <script>
-        // BANCO DE DADOS INTEGRADO: Adicione ou remova seus produtos diretamente aqui!
-        // Ordem dos campos: nome, link, preco, img (caso não tenha foto, deixe '')
-        const listaDeProdutos = [
-            {
-                nome: "Kit 50 Esponjas Mágicas",
-                link: "https://shopee.com.br",
-                preco: "R\$ 12,00",
-                img: "" 
-            }
-            // Para adicionar um novo produto, coloque uma vírgula aqui e crie outro bloco {...}
-        ];
+        const PLANILHA_ID = "10v0iA1qh3q5MHI7HKObh0uFqjZNf0hdizMspbK3i2ZM"; 
+        
+        // Endpoint seguro alimentado pela publicação em formato CSV público do Google Drive
+        const URL_PLANILHA = `https://google.com{PLANILHA_ID}/pub?output=csv`;
 
-        function carregarAchadinhos() {
-            renderProducts(listaDeProdutos);
+        let allProducts = [];
+
+        async function fetchProducts() {
+            const grid = document.getElementById('productGrid');
+            try {
+                const response = await fetch(URL_PLANILHA);
+                if (!response.ok) throw new Error();
+                const csvText = await response.text();
+                
+                // Separa os dados lidos quebrando o texto por linhas
+                const lines = csvText.split('\n');
+                
+                allProducts = lines.slice(1).map(line => {
+                    if (!line || line.trim() === '') return null;
+
+                    // Divide as colunas lendo as vírgulas
+                    const columns = line.split(',');
+                    if (columns.length < 3) return null;
+
+                    // Limpa as aspas inseridas no formato CSV
+                    const nome = columns[0] ? columns[0].replace(/"/g, '').trim() : '';
+                    const link = columns[1] ? columns[1].replace(/"/g, '').trim() : '#';
+                    
+                    let preco = columns[2] ? columns[2].replace(/"/g, '').trim() : '';
+                    if (preco && !preco.includes('R\$')) {
+                        preco = 'R\$ ' + preco;
+                    }
+
+                    // Coluna D (Índice 3) para imagem. Se estiver vazia, renderiza uma foto elegante padrão de produto
+                    const img = (columns[3] && columns[3].replace(/"/g, '').trim() !== '') 
+                                ? columns[3].replace(/"/g, '').trim() 
+                                : 'https://unsplash.com';
+
+                    return { nome, img, link, preco };
+                }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== 'nome');
+
+                allProducts.reverse(); 
+                renderProducts(allProducts);
+            } catch (error) {
+                console.error(error);
+                grid.innerHTML = `<div class="status-message" style="color: red;"><i class="fa-solid fa-triangle-exclamation"></i> Sincronização pendente. Ative o menu 'Publicar na Web' da sua planilha em formato .CSV para carregar automaticamente.</div>`;
+            }
         }
 
         function renderProducts(productsList) {
             const grid = document.getElementById('productGrid');
             
             if (productsList.length === 0) {
-                grid.innerHTML = `<div class="status-message">Nenhum achadinho encontrado.</div>`;
+                grid.innerHTML = `<div class="status-message">Nenhum achadinho cadastrado.</div>`;
                 return;
             }
 
-            grid.innerHTML = productsList.map(product => {
-                // Define uma foto cinza padrão se o campo 'img' estiver vazio
-                const fotoProduto = product.img.trim() !== '' ? product.img : 'https://unsplash.com';
-                
-                return `
-                    <div class="product-card">
-                        <div class="product-image-wrapper">
-                            <img src="${fotoProduto}" alt="${product.nome}" class="product-img" onerror="this.src='https://unsplash.com'">
-                        </div>
-                        <div class="product-info">
-                            <h2 class="product-title" title="${product.nome}">${product.nome}</h2>
-                            <div class="price-container">
-                                <span class="price-tag">${product.preco}</span>
-                            </div>
-                            <a href="${product.link}" target="_blank" class="btn-shopee">
-                                <i class="fa-solid fa-bag-shopping"></i> Comprar
-                            </a>
-                        </div>
+            grid.innerHTML = productsList.map(product => `
+                <div class="product-card">
+                    <div class="product-image-wrapper">
+                        <img src="${product.img}" alt="${product.nome}" class="product-img" onerror="this.src='https://unsplash.com'">
                     </div>
-                `;
-            }).join('');
+                    <div class="product-info">
+                        <h2 class="product-title" title="${product.nome}">${product.nome}</h2>
+                        <div class="price-container">
+                            <span class="price-tag">${product.preco || 'R$ --'}</span>
+                        </div>
+                        <a href="${product.link}" target="_blank" class="btn-shopee">
+                            <i class="fa-solid fa-bag-shopping"></i> Comprar
+                        </a>
+                    </div>
+                </div>
+            `).join('');
         }
 
         function filterProducts() {
             const searchTerm = document.getElementById('searchBar').value.toLowerCase();
-            const filtered = listaDeProdutos.filter(product => 
+            const filtered = allProducts.filter(product => 
                 product.nome.toLowerCase().includes(searchTerm)
             );
             renderProducts(filtered);
         }
 
-        window.onload = carregarAchadinhos;
+        window.onload = fetchProducts;
     </script>
 </body>
 </html>
