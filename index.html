@@ -208,59 +208,55 @@
     </div>
 
     <script>
-        // ID Extraído da sua URL oficial
         const PLANILHA_ID = "10v0iA1qh3q5MHI7HKObh0uFqjZNf0hdizMspbK3i2ZM"; 
-        
-        // SOLUÇÃO CRÍTICA ANTIBLOQUEIO: Usando responseHandler para o Google injetar os dados direto na função gvizCallback
-        const URL_PLANILHA = `https://google.com{PLANILHA_ID}/gviz/tq?tqx=responseHandler:gvizCallback`;
+        const URL_PLANILHA = `https://google.com{PLANILHA_ID}/gviz/tq?tqx=out:json`;
 
         let allProducts = [];
 
-        function fetchProducts() {
-            // Cria uma tag script dinamicamente para pular a segurança do navegador (CORS)
-            const script = document.createElement('script');
-            script.src = URL_PLANILHA;
-            script.onerror = function() {
-                document.getElementById('productGrid').innerHTML = `<div class="status-message" style="color: red;"><i class="fa-solid fa-triangle-exclamation"></i> Erro ao conectar com o Google Sheets. Verifique o compartilhamento.</div>`;
-            };
-            document.body.appendChild(script);
-        }
-
-        // Esta função é chamada AUTOMATICAMENTE pelo Google Sheets trazendo os dados prontos
-        function gvizCallback(response) {
-            if (!response || !response.table || !response.table.rows) {
-                document.getElementById('productGrid').innerHTML = `<div class="status-message">Nenhum produto cadastrado na planilha.</div>`;
-                return;
-            }
-
-            const rows = response.table.rows;
-
-            // Mapeamento correto baseado na foto real dos seus dados
-            allProducts = rows.map(row => {
-                if (!row || !row.c) return null;
-
-                // Coluna A (0) = Nome
-                const nome = (row.c[0] && row.c[0].v !== null) ? row.c[0].v.toString() : '';
+        async function fetchProducts() {
+            const grid = document.getElementById('productGrid');
+            try {
+                const response = await fetch(URL_PLANILHA);
+                const text = await response.text();
                 
-                // Coluna B (1) = Link Shopee
-                const link = (row.c[1] && row.c[1].v !== null) ? row.c[1].v.toString() : '#';
+                // Extração via RegExp ultra-segura sem depender de nomes de funções cruzadas externas
+                const start = text.indexOf('{');
+                const end = text.lastIndexOf('}');
                 
-                // Coluna C (2) = Preço
-                let preco = (row.c[2] && row.c[2].v !== null) ? row.c[2].v.toString().trim() : '';
-                if (preco && !preco.includes('R$')) {
-                    preco = 'R$ ' + preco;
+                if (start === -1 || end === -1) {
+                    throw new Error("Formato inválido retornado pelo Google.");
                 }
+                
+                const jsonString = text.substring(start, end + 1);
+                const jsonData = JSON.parse(jsonString);
+                const rows = jsonData.table.rows;
+                
+                // Mapeamento correto com checagem estrita para a ordem: A=Nome, B=Link, C=Preço, D=Imagem
+                allProducts = rows.map(row => {
+                    if (!row || !row.c || row.c.length === 0) return null;
+                    
+                    const nome = (row.c[0] && row.c[0].v !== null) ? row.c[0].v.toString() : '';
+                    const link = (row.c[1] && row.c[1].v !== null) ? row.c[1].v.toString() : '#';
+                    
+                    let preco = (row.c[2] && row.c[2].v !== null) ? row.c[2].v.toString().trim() : '';
+                    if (preco && !preco.includes('R$')) {
+                        preco = 'R$ ' + preco;
+                    }
 
-                // Coluna D (3) = Imagem (Caso esteja vazia, coloca uma foto padrão)
-                const img = (row.c[3] && row.c[3].v !== null && row.c[3].v.toString().trim() !== '') 
-                            ? row.c[3].v.toString() 
-                            : 'https://unsplash.com';
+                    // Se a imagem na coluna D (índice 3) estiver vazia, coloca o placeholder padrão
+                    const img = (row.c[3] && row.c[3].v !== null && row.c[3].v.toString().trim() !== '') 
+                                ? row.c[3].v.toString() 
+                                : 'https://unsplash.com';
 
-                return { nome, img, link, preco };
-            }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== 'nome');
+                    return { nome, img, link, preco };
+                }).filter(p => p !== null && p.nome !== '' && p.nome.toLowerCase() !== 'nome');
 
-            allProducts.reverse();
-            renderProducts(allProducts);
+                allProducts.reverse(); 
+                renderProducts(allProducts);
+            } catch (error) {
+                console.error("Erro interno:", error);
+                grid.innerHTML = `<div class="status-message" style="color: red;"><i class="fa-solid fa-triangle-exclamation"></i> Erro ao renderizar produtos. Certifique-se de que os dados estão preenchidos corretamente nas colunas A, B e C da planilha.</div>`;
+            }
         }
 
         function renderProducts(productsList) {
@@ -290,4 +286,3 @@
         }
 
         function filterProducts() {
-            const searchTerm = document.getElementById('searchBar').value.toLowerCase();
